@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template: The Smart Report - An Interactive Meta-Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- REMOVED: Faulty and incompatible radial gauge plugin script -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #008080; /* Teal - Core accent */
+            --primary-dark: #006060; /* Darker Teal - For hover/active states */
+            --secondary: #4A6D6D; /* Slate Blue/Grey - For secondary info */
+            --accent: #9FB7B9; /* Light Blue/Grey - For subtle backgrounds */
+            --complementary-dark: #000000;
+            --white: #FFFFFF;
+            --warning: #CF1C00; /* High-visibility warning */
+            --warning-dark: #A51700;
+            --text-light: #4B6668; /* For supporting text */
+            --text-dark: #2C625D;
+            --text-dark-grey: #333333;
+            --text-darker: #324B4B;
+            --text-darkest: #174052; /* Main heading color */
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 130px;
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -10;
+        }
+
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 40vh;
+            max-height: 400px;
+            width: 100%;
+            max-width: 800px;
+            top: 0rem;
+            margin-bottom: 2rem;
+        }
+
+        .map-chart-container, .scatter-chart-container {
+            height: 50vh;
+            min-height: 450px;
+            width: 100%;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        #tour-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 999;
+            background-color: rgba(255, 255, 255, 0.66);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            transition: background-color 0.3s;
+        }
+
+        #tour-navigation-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            flex-shrink: 0;
+        }
+
+        .header-btn {
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.3s, transform 0.3s;
+            flex-shrink: 0;
+        }
+
+        .header-btn:hover {
+            background-color: var(--primary-dark);
+            transform: scale(1.1);
+        }
+
+        .header-btn-nav {
+            background-color: #e2e8f0;
+            color: var(--text-darker);
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .header-btn-nav:hover {
+            background-color: #cbd5e1;
+            transform: scale(1.05);
+        }
+
+        .modal-btn {
+            background-color: var(--primary-dark);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .modal-btn:hover {
+            background-color: var(--primary);
+        }
+
+        @media (max-aspect-ratio: 1/1) {
+            .header-text {
+                display: none;
+            }
+
+            .padding-responsive {
+                padding: 0.5rem 1rem 0.1rem 1rem !important;
+            }
+
+            .table-responsive {
+                zoom: .65 !important;
+            }
+        }
+
+        @media (min-aspect-ratio: 1/1) {
+            .header-controls-portrait {
+                display: none !important;
+            }
+
+            .padding-responsive {
+                padding: 2rem 8rem 0.1rem 8rem !important;
+            }
+
+            .table-responsive {
+                zoom: 1 !important;
+            }
+        }
+
+        #tour-status {
+            font-weight: 600;
+            color: var(--text-darker);
+            background-color: #f1f5f9;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            min-width: 50px;
+            text-align: center;
+            font-size: 0.75rem;
+        }
+
+        #header-default-content h1, #header-tour-content h1 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--text-darkest);
+            line-height: 1.2;
+        }
+
+        #header-default-content p, #header-tour-content p {
+            font-size: 1rem;
+            color: var(--text-darker);
+            margin-top: 0.25rem;
+        }
+
+        #header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #header-progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: transparent;
+        }
+
+        #header-progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--primary);
+        }
+
+        #toast-notification {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(200%);
+            background-color: var(--text-darkest);
+            color: var(--white);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1005;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            opacity: 0;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+        }
+
+        #toast-notification.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #toast-notification.warning {
+            background-color: #f97316;
+        }
+
+        #toast-notification.error {
+            background-color: #ef4444;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1003;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            display: inline-block;
+            justify-content: center;
+            align-content: center;
+            horiz-align: center;
+            background-color: var(--white);
+            color: var(--text-dark-grey);
+            padding: 2rem 2rem 1rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 450px;
+            position: relative;
+            transform: scale(0.95);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+            border-top: 5px solid var(--primary);
+        }
+
+        .modal-overlay.show .modal-content {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+        }
+
+        .modal-content h3 {
+            color: var(--text-darkest);
+            margin-bottom: 1rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-light);
+            cursor: pointer;
+        }
+
+        #info-popup .modal-content, #api-key-modal .modal-content {
+            max-width: 500px;
+        }
+
+        #info-popup-footer {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        #info-popup-ask-btn {
+            background-color: var(--primary-dark);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #info-popup-ask-btn:hover {
+            background-color: var(--primary);
+        }
+
+        .text-input {
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            min-width: 22rem;
+            width: 75%;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .text-header {
+            color: var(--text-darkest);
+        }
+
+        .text-subheader {
+            color: var(--text-darker);
+        }
+
+        .bg-primary-card {
+            background-color: var(--primary-dark);
+        }
+
+        .text-primary-card {
+            color: var(--white);
+        }
+
+        .stat-number {
+            color: var(--primary);
+        }
+
+        .stat-warning {
+            color: var(--warning);
+        }
+
+        .info-clickable {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .info-clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .tour-highlighter {
+            position: absolute;
+            border-radius: 14px;
+            box-shadow: 0 0 25px 3px var(--primary);
+            z-index: 998;
+            pointer-events: none;
+            transition: opacity 0.4s ease-in-out;
+            opacity: 0;
+        }
+
+        #language-selector {
+            position: relative;
+        }
+
+        #language-selector select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: transparent;
+            border: 1px solid #ccc;
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        #language-selector::after {
+            content: '▼';
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        #translation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 1002;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1rem;
+            color: var(--text-darkest);
+            font-size: 1.5rem;
+        }
+
+        #translation-overlay.show {
+            display: flex;
+        }
+
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 8px solid var(--primary);
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #qa-modal-overlay .modal-content {
+            max-width: 600px;
+        }
+
+        #qa-modal {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            width: 100%;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #qa-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        #clear-chat-btn {
+            background: #eee;
+            border: 1px solid #ddd;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #qa-chat-log {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 1rem;
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+        }
+
+        .user-message {
+            text-align: right;
+        }
+
+        .user-message .msg-bubble {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .ai-message .msg-bubble {
+            background-color: #f0f0f0;
+        }
+
+        .msg-bubble {
+            display: inline-block;
+            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            max-width: 80%;
+            text-align: left;
+        }
+
+        #qa-input-form {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #qa-input {
+            flex-grow: 1;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+
+        #qa-send-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 1.5rem;
+            cursor: pointer;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: #000;
+            margin: 2rem auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        #bibliography-list .source-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 1rem;
+        }
+
+        #bibliography-list .source-item:last-child {
+            border-bottom: none;
+        }
+
+        #bibliography-list .source-title {
+            font-weight: 600;
+            color: var(--text-dark-grey);
+        }
+
+        #bibliography-list .source-meta {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        #bibliography-list .source-meta a {
+            color: var(--primary);
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        #bibliography-list .source-meta a:hover {
+            text-decoration: underline;
+        }
+
+        .citation-link {
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .citation-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        #main-footer {
+            padding: 2rem;
+            border-top: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            color: var(--text-light);
+        }
+
+        #main-footer svg {
+            flex-shrink: 0;
+        }
+
+        .bg-white {
+            background-color: rgba(255, 255, 255, 0.33) !important;
+            backdrop-filter: blur(4px) !important;
+        }
+
+        .tabs-container {
+            display: flex;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .code-block-container {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block-container pre {
+            margin: 0;
+        }
+
+        .copy-code-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .copy-code-btn:hover {
+            background-color: var(--primary);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+<canvas id="particle-canvas"></canvas>
+<audio id="tour-audio-player"></audio>
+
+<div id="toast-notification">
+    <i id="toast-icon" class="fa-solid fa-circle-info"></i>
+    <span id="toast-text"></span>
+</div>
+
+<div id="tour-header">
+    <div id="smart-report-strip"
+         style="background-color: rgba(241, 245, 249, 0.95); backdrop-filter: blur(4px); padding: 0.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-light); border-bottom: 1px solid #e2e8f0; height: 30px;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+            A SMART REPORT BY <span style="color: #174052; font-weight: 700; display: inline-flex; align-items: center; gap: 0.2rem;">INDEPENDENT
+            <svg width="22" height="17" viewBox="0 0 87 69" fill="none" xmlns="http://www.w3.org/2000/svg"
+                 style="display: inline-block; vertical-align: text-bottom;">
+                <path d="M68.069 26C68.069 26 63.1511 26 60 26H87H78.931C78.931 26 78.931 36.0563 78.931 42.5C78.931 48.9437 78.931 61 78.931 61C76.3448 64.3735 70.6552 66.3735 68.069 63C68.069 63 68.069 50.3342 68.069 43.5C68.069 36.6658 68.069 26 68.069 26Z"
+                      stroke="#174052" stroke-width="8"></path>
+                <path d="M32 50C28.5 46.5 13 50 13 50C13 50 23.2753 39.42 30.5 32C37.7247 24.58 48 12 48 12V42M48 54C48 49.3137 48 42 48 42M48 42H44"
+                      stroke="#174052" stroke-width="8"></path>
+                <path d="M73.5 2C73.5 3.95262 69.5 10 73.5 14" stroke="#008080" stroke-width="12"></path>
+            </svg> LABS</span>
+        </div>
+        <a href="mailto:research@independentailabs.com" class="hover:underline"
+           style="display: flex; align-items: center; gap: 0.3rem; text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-envelope"></i>
+            <span class="hidden md:inline">research@independentailabs.com</span>
+        </a>
+    </div>
+
+    <div id="main-header-content-wrapper" style="padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <div id="header-main-area" style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 1rem;">
+            <button id="tour-button" class="header-btn" title="Start/Pause Tour"><i class="fa-solid fa-play"></i></button>
+            <div id="header-text-content-area" class="header-text" style="flex-grow: 1; min-width: 0;">
+                <div id="header-default-content">
+                    <h1 data-key="header_title">The Smart Report Template</h1>
+                    <p data-key="header_subtitle">An Interactive Meta-Analysis</p>
+                </div>
+                <div id="header-tour-content" style="display: none;"></div>
+            </div>
+            <div id="tour-navigation-controls" class="header-controls-portrait" style="display: none;">
+                <button id="tour-prev-btn-portrait" class="header-btn-nav header-controls-portrait" title="Previous Stop"><i
+                        class="fa-solid fa-chevron-left"></i></button>
+                <span id="tour-status-portrait" class="header-controls-portrait"></span>
+                <button id="tour-next-btn-portrait" class="header-btn-nav header-controls-portrait" title="Next Stop"><i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+        <div id="header-controls">
+            <div id="language-selector">
+                <select id="lang-select">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                    <option value="pt">🇧🇷 Português</option>
+                    <option value="ja">🇯🇵 日本語</option>
+                    <option value="zh">🇨🇳 中文</option>
+                </select>
+            </div>
+            <button id="api-key-button" class="header-btn" title="Set API Key"><i class="fa-solid fa-key"></i></button>
+            <button id="ask-ai-button" class="header-btn" title="Ask a Question"><i class="fa-solid fa-comments"></i></button>
+        </div>
+    </div>
+    <div id="header-progress-container">
+        <div id="header-progress-bar"></div>
+    </div>
+</div>
+
+<div class="container mx-auto p-4 padding-responsive">
+    <header id="section-intro" class="relative text-center mb-16 report-section">
+        <div class="relative z-10">
+            <h1 class="text-4xl md:text-6xl font-black text-header mb-2" data-key="main_title">The Smart Report Template</h1>
+            <p class="text-xl font-semibold mb-4" style="color: #174052; width: 100%; max-width: 64rem; text-align: end">Q3 2025</p>
+            <p class="text-xl md:text-2xl font-light text-subheader max-w-4xl mx-auto" data-key="main_subtitle">An interactive meta-analysis on building
+                next-generation digital narratives with this very template and Google's Generative AI.</p>
+            <div class="max-w-4xl mx-auto">
+                <div class="video-container tour-element">
+                    <iframe src="https://www.youtube.com/embed/lxvIuoD-nOs?si=Gz6V7-N6589uM19i" title="YouTube video player" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="anatomy-report" class="mb-16 report-section">
+        <h2 class="text-3xl font-bold text-center mb-2 text-header" data-key="anatomy_title">Anatomy of a Smart Report</h2>
+        <p class="text-lg text-subheader text-center mb-8 max-w-3xl mx-auto" data-key="anatomy_text">A Smart Report is more than static text and images. It's a
+            dynamic, multi-layered experience. Here we dissect the core components that bring this template to life.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div id="gauge-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable flex flex-col justify-between"
+                 data-info-title-key="gauge_popup_title" data-info-text-key="gauge_popup_text">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="gauge_title">AI Integration Score</h3>
+                <div class="chart-container" style="height: 200px; margin-bottom: 0;">
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+                <p class="text-center text-sm text-text-light mt-2" data-key="gauge_desc">This gauge measures the depth of AI integration, from basic features
+                    to dynamic, real-time content generation.</p>
+            </div>
+            <div id="donut-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable flex flex-col justify-between"
+                 data-info-title-key="donut_popup_title" data-info-text-key="donut_popup_text">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="donut_title">Template Codebase Breakdown</h3>
+                <div class="chart-container" style="height: 200px; margin-bottom: 0;">
+                    <canvas id="donutChart"></canvas>
+                </div>
+                <p class="text-center text-sm text-text-light mt-2" data-key="donut_desc">A visual breakdown of the technologies used to build this very page.
+                    As you can see, JavaScript does the heavy lifting.</p>
+            </div>
+            <div id="interactive-elements-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable flex flex-col"
+                 data-info-title-key="elements_popup_title" data-info-text-key="elements_popup_text">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="elements_title">Interactive Elements</h3>
+                <p class="text-subheader mb-6" data-key="elements_text">The number of distinct interactive components available in this template, from charts to
+                    modals.</p>
+                <div class="text-center flex-grow flex flex-col justify-center">
+                    <p class="text-8xl font-black stat-number">12+</p>
+                    <p class="text-lg font-semibold text-text-darker mt-2" data-key="elements_stat">Unique component types available out-of-the-box.</p>
+                </div>
+                <p class="text-sm text-text-light mt-6" data-key="elements_desc">Each element is designed to be modular and easily customizable for your own
+                    data stories.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="genai-engine" class="mb-16 report-section">
+        <h2 class="text-3xl font-bold text-center mb-8 text-header" data-key="genai_title">The GenAI Engine: Powered by Google</h2>
+        <div id="radar-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable" data-info-title-key="radar_popup_title"
+             data-info-text-key="radar_popup_text">
+            <h3 class="text-xl font-bold text-center mb-4 text-header" data-key="radar_title">Content Format Efficacy Comparison</h3>
+            <p class="text-subheader text-center mb-6 max-w-3xl mx-auto" data-key="radar_text">How does a Smart Report stack up against traditional formats?
+                This (completely unbiased, of course) chart visualizes the advantages across key metrics.</p>
+            <div class="chart-container" style="max-height: 450px;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <div id="fact-matrix-data" class="hidden">
+        ### Context for AI Assistant: The Smart Report Meta-Template
+
+        This document provides the complete context for the "Smart Report Template" infographic. You are the AI assistant for this report. Your purpose is to
+        explain the features of the template itself, using this context. Your tone should be helpful, knowledgeable, and slightly self-aware of your own nature
+        as a feature within the report.
+
+        ### General Information & Functionality
+        * **Core Theme:** This is a "meta" report. It's a template that demonstrates its own features by presenting mock data about itself. The narrative
+        focuses on how to build these reports using this template and Google's Generative AI (like the Gemini family).
+        * **Interactive Features:** The page includes a guided tour (▶ button), clickable info pop-ups on every chart/card, multi-language translation, and this
+        AI-powered Q&A feature. The goal is to show, not just tell.
+        * **Guided Tour:** The tour automatically scrolls to and highlights key sections. A progress bar in the header shows progress. User interaction
+        (scrolling, clicking) pauses the tour.
+        * **Info Pop-ups:** These provide extra details about a specific chart or component. They only appear on a user click. The "Ask for Elaboration" button
+        opens this Q&A window with a pre-filled query related to the pop-up's content.
+        * **AI Integration:** The report uses a user-provided Google AI Studio API key for two main functions:
+        1. **Translation:** Translates all text elements on the page to a selected language.
+        2. **Q&A:** Powers this chat session, answering questions based on the context provided in this document.
+
+        ---
+
+        ### Section 1: Anatomy of a Smart Report
+        * **Key Message:** A Smart Report is built from various modular, interactive components.
+        * **Gauge Chart (AI Integration Score):** This chart shows a mock "AI Integration Score" of 95%. It represents the depth of AI features implemented in
+        the report. The scale runs from "Static" (no AI) to "Dynamic" (AI-generated content).
+        * *Pop-up Text:* The gauge visualizes the report's "smartness." A higher score indicates deeper integration of AI features like this Q&A, real-time
+        translation, and potentially even AI-assisted data analysis. This template aims for the high end of the scale.
+        * **Donut Chart (Template Codebase Breakdown):** This shows the composition of the template's source code. The mock data is: JavaScript (55%), HTML
+        (25%), CSS (15%), GenAI Prompts (5%).
+        * *Pop-up Text:* This chart reveals the technology stack of the page itself. The large JavaScript portion powers the interactivity and chart rendering,
+        while the "GenAI Prompts" slice represents the structured text used to communicate with the AI model—the very instructions I am following now.
+        * **Big Number Card (Interactive Elements):** This card highlights that the template contains "12+" unique interactive component types.
+        * *Pop-up Text:* This number represents the variety of tools at a developer's disposal within this template. It includes charts, modals, tabs, a guided
+        tour, and more, all designed to create a more engaging and informative user experience than a static document.
+
+        ---
+        ### Section 2: The GenAI Engine
+        * **Key Message:** Google's Generative AI is the "brain" that powers the most advanced features.
+        * **Radar Chart (Content Format Efficacy):** This chart compares a "Smart Report" to a "Static PDF" and a "PowerPoint Deck" across several axes.
+        * **Data (on a scale of 1-10):**
+        * **Smart Report:** Engagement (10), Data Depth (9), Interactivity (10), Memorability (8), Updateability (9).
+        * **Static PDF:** Engagement (3), Data Depth (7), Interactivity (1), Memorability (4), Updateability (2).
+        * **PowerPoint Deck:** Engagement (6), Data Depth (5), Interactivity (3), Memorability (6), Updateability (5).
+        * *Pop-up Text:* This radar chart provides a (perhaps slightly biased) comparison of content formats. The goal is to visually argue that the combination
+        of data depth, interactivity, and engagement in a Smart Report makes it a superior medium for conveying complex information.
+
+        ---
+        ### Section 3: The Development Workflow
+        * **Key Message:** Using this template involves a clear, structured workflow.
+        * **Interactive Tabs Component:** This demonstrates a way to organize complex information without cluttering the page.
+        * **Tab 1 (The Workflow):** Shows a 4-step process: 1. Define Narrative -> 2. Curate Data -> 3. Configure Components -> 4. Write AI Prompts.
+        * **Tab 2 (Code Snippet):** Provides a sample JavaScript code block for initializing a Chart.js chart, demonstrating how developers can easily add new
+        visualizations. It includes a "copy" button.
+        * **Tab 3 (Key Considerations):** Lists important points: Audience First, Data Integrity, Performance, and Ethical AI.
+        * *Pop-up Text:* Tabs are an excellent tool for layering information. They allow users to explore different facets of a topic—like the process, the
+        technical details, and the guiding principles—at their own pace, reducing cognitive load.
+
+        ---
+        ### Section 4: Measuring the Impact
+        * **Key Message:** The effectiveness of Smart Reports can be measured, and they show significant advantages.
+        * **Choropleth Map (Global Adoption):** This map shows the mock global adoption rate of the "Smart Report Standard." High adoption in North America &
+        Western Europe (90%+), medium in South America & East Asia (60-80%), and lower elsewhere.
+        * *Pop-up Text:* This map visualizes the hypothetical global adoption of this report format. Darker regions indicate where organizations have more
+        widely replaced static PDFs and slideshows with interactive, AI-enhanced reports for their internal and external communications.
+        * **Stacked Bar Chart (User Engagement):** Compares engagement time between a "Static PDF" and a "Smart Report" across different user roles (Analyst,
+        Executive, Client). The Smart Report shows significantly higher engagement for all roles.
+        * *Pop-up Text:* This chart demonstrates a key value proposition: increased user engagement. By allowing users to interact with the data, ask questions,
+        and explore, Smart Reports hold attention longer, leading to better information retention and comprehension across all audience types.
+        * **Scatter Plot (Cost vs. Impact):** This chart plots different report types. "Static PDF" is low cost, low impact. "PowerPoint" is medium cost, medium
+        impact. "Smart Report" is medium-high cost but very high impact. "Fully Custom App" is very high cost and very high impact.
+        * *Pop-up Text:* This plot illustrates the cost-benefit analysis of different reporting formats. While a Smart Report requires more initial effort than
+        a PDF, this template is designed to lower that cost, providing a disproportionately high impact and return on investment through superior user
+        engagement and understanding.
+    </div>
+
+    <section id="workflow" class="mb-16 report-section">
+        <h2 class="text-3xl font-bold text-center mb-8 text-header" data-key="workflow_title">The Development Workflow</h2>
+        <div id="tabs-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable" data-info-title-key="tabs_popup_title"
+             data-info-text-key="tabs_popup_text">
+            <div class="tabs-container">
+                <button class="tab-button active" data-tab="tab-1" data-key="workflow_tab1_button">The Workflow</button>
+                <button class="tab-button" data-tab="tab-2" data-key="workflow_tab2_button">Code Snippet</button>
+                <button class="tab-button" data-tab="tab-3" data-key="workflow_tab3_button">Key Considerations</button>
+            </div>
+            <div id="tab-1" class="tab-content active">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="workflow_tab1_title">From Idea to Insight: A 4-Step Process</h3>
+                <p class="text-subheader mb-6" data-key="workflow_tab1_text">Using this template simplifies the creation of a Smart Report into four manageable
+                    stages.</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+                    <div class="border-t-4 border-primary pt-4"><i class="fa-solid fa-pen-ruler text-3xl mb-3 text-primary"></i><h4 class="font-bold"
+                                                                                                                                    data-key="step1_title">1.
+                        Define Narrative</h4>
+                        <p class="text-sm" data-key="step1_text">Outline the story you want to tell with your data.</p></div>
+                    <div class="border-t-4 border-primary pt-4"><i class="fa-solid fa-database text-3xl mb-3 text-primary"></i><h4 class="font-bold"
+                                                                                                                                   data-key="step2_title">2.
+                        Curate Data</h4>
+                        <p class="text-sm" data-key="step2_text">Gather and structure the data needed for your visuals.</p></div>
+                    <div class="border-t-4 border-primary pt-4"><i class="fa-solid fa-cubes text-3xl mb-3 text-primary"></i><h4 class="font-bold"
+                                                                                                                                data-key="step3_title">3.
+                        Configure Components</h4>
+                        <p class="text-sm" data-key="step3_text">Copy, paste, and configure the interactive elements.</p></div>
+                    <div class="border-t-4 border-primary pt-4"><i class="fa-solid fa-robot text-3xl mb-3 text-primary"></i><h4 class="font-bold"
+                                                                                                                                data-key="step4_title">4. Write
+                        AI Prompts</h4>
+                        <p class="text-sm" data-key="step4_text">Craft the context for the AI Q&A and translation features.</p></div>
+                </div>
+            </div>
+            <div id="tab-2" class="tab-content">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="workflow_tab2_title">Example: Initializing a Chart</h3>
+                <p class="text-subheader mb-6" data-key="workflow_tab2_text">Adding a new chart is straightforward. Here is the JavaScript for the Donut Chart
+                    you saw earlier. Use the copy button to grab it!</p>
+                <div class="code-block-container">
+                    <button class="copy-code-btn"><i class="fa-solid fa-copy"></i> Copy</button>
+                    <pre><code class="language-javascript">new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['JavaScript', 'HTML', 'CSS', 'GenAI Prompts'],
+        datasets: [{
+            data: [55, 25, 15, 5],
+            backgroundColor: [
+                '#008080', '#006060',
+                '#4A6D6D', '#9FB7B9'
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 2
+        }]
+    },
+    options: { /* ... options ... */ }
+});</code></pre>
+                </div>
+            </div>
+            <div id="tab-3" class="tab-content">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="workflow_tab3_title">Guiding Principles</h3>
+                <p class="text-subheader mb-6" data-key="workflow_tab3_text">Building an effective report goes beyond code. Keep these principles in mind.</p>
+                <ul class="list-disc list-inside space-y-2">
+                    <li data-key="principle1"><b>Audience First:</b> Design for your user's needs and level of expertise.</li>
+                    <li data-key="principle2"><b>Data Integrity:</b> Ensure your data is accurate, well-sourced, and presented without deception.</li>
+                    <li data-key="principle3"><b>Performance Matters:</b> Optimize assets and code for a smooth experience, especially on mobile.</li>
+                    <li data-key="principle4"><b>Ethical AI:</b> Be transparent about AI usage. Write clear, unbiased prompts to avoid generating
+                        misinformation.
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="impact" class="mb-16 report-section">
+        <h2 class="text-3xl font-bold text-center mb-2 text-header" data-key="impact_title">Measuring the Impact</h2>
+        <p class="text-lg text-subheader text-center mb-8 max-w-3xl mx-auto" data-key="impact_text">The true value of a Smart Report lies in its superior
+            ability to engage and inform. The following data, while hypothetical, illustrates the potential return on investment.</p>
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-8">
+            <h3 class="text-xl font-bold text-center mb-6 text-header" data-key="map_title">Global Adoption of the Smart Report Standard (2025 Est.)</h3>
+            <div id="mapChart" class="map-chart-container tour-element info-clickable" data-info-title-key="map_popup_title"
+                 data-info-text-key="map_popup_text"></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div id="stacked-bar-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable" data-info-title-key="stackedbar_popup_title"
+                 data-info-text-key="stackedbar_popup_text">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="stackedbar_title">User Engagement Time by Role</h3>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="stackedBarChart"></canvas>
+                </div>
+                <p class="text-center text-sm text-text-light mt-2" data-key="stackedbar_desc">Average time spent interacting with content, comparing a Smart
+                    Report to a static equivalent.</p>
+            </div>
+            <div id="scatter-plot-card" class="bg-white rounded-xl shadow-lg p-6 md:p-8 tour-element info-clickable" data-info-title-key="scatter_popup_title"
+                 data-info-text-key="scatter_popup_text">
+                <h3 class="text-xl font-bold mb-4 text-header" data-key="scatter_title">Analysis of Cost vs. Impact</h3>
+                <div class="scatter-chart-container">
+                    <canvas id="scatterPlot"></canvas>
+                </div>
+                <p class="text-center text-sm text-text-light mt-2" data-key="scatter_desc">This template aims to shift the "Smart Report" bubble left, reducing
+                    cost while maintaining high impact.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer id="section-conclusion" class="relative text-center mt-16 py-24 border-t border-gray-300 report-section">
+        <div class="outro relative z-10 tour-element">
+            <p class="text-4xl lg:text-5xl font-black text-header mb-8 max-w-5xl mx-auto" data-key="conclusion_main_msg">Your Data Has a Story. Tell It
+                Brilliantly.</p>
+            <p class="text-lg text-subheader max-w-4xl mx-auto mb-8" data-key="conclusion_sub_msg">This template provides the canvas, the tools, and the
+                intelligence to transform raw data into compelling, interactive narratives. The future of communication is not just about presenting facts; it's
+                about creating understanding.</p>
+            <div class="my-8">
+                <i class="fa-solid fa-wand-magic-sparkles text-5xl text-primary" style="color: #174052; scale: 2; margin: 1rem"></i>
+            </div>
+            <div class="mt-10 pt-6 border-t border-gray-200">
+                <h3 class="text-xl font-bold text-header mb-3" data-key="foreword_title">Fork, Customize, and Innovate</h3>
+                <p class="text-md text-subheader max-w-3xl mx-auto" data-key="foreword_text">This is a living document and an open starting point. We encourage
+                    you to download, adapt, and build upon this foundation to create your own insightful Smart Reports. The complete source is available for you
+                    to explore.</p>
+            </div>
+        </div>
+        <section class="text-center my-8">
+            <a href="https://github.com/your-repo/smart-report-template" target="_blank" rel="noopener noreferrer"
+               class="btn-primary inline-flex items-center justify-center text-lg px-8 py-4">
+                <i class="fa-brands fa-github mr-2"></i>
+                <span data-key="download_button_text">View Source on GitHub</span>
+            </a>
+        </section>
+    </footer>
+
+    <section id="bibliography-section" class="mb-16 report-section">
+        <h2 class="text-3xl font-bold text-center mb-2 text-header" data-key="bibliography_title">Link Resources & Further Reading</h2>
+        <p class="text-lg text-subheader text-center mb-8 max-w-3xl mx-auto" data-key="bibliography_text">Explore the technologies and concepts that power this
+            template. Use the search box to filter resources.</p>
+        <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <div class="mb-4">
+                <input type="search" id="bibliography-search" data-placeholder-key="bibliography_search_placeholder"
+                       placeholder="Search resources (e.g., 'Gemini', 'Chart.js', 'Interaction Design')..."
+                       class="w-full p-3 border border-gray-300 rounded-lg">
+            </div>
+            <div id="bibliography-list" class="space-y-4 max-h-96 overflow-y-auto pr-4"></div>
+        </div>
+    </section>
+</div>
+
+<!-- MODALS -->
+<div id="info-popup" class="modal-overlay">
+    <div class="modal-content">
+        <button id="info-popup-close-btn" class="modal-close-btn">×</button>
+        <h3 id="info-popup-title"></h3>
+        <p id="info-popup-text"></p>
+        <div id="info-popup-footer">
+            <button id="info-popup-ask-btn" data-key="info_popup_ask_btn">Ask for Elaboration</button>
+        </div>
+    </div>
+</div>
+
+<div id="api-key-modal" class="modal-overlay">
+    <div class="modal-content">
+        <button id="api-key-close-btn" class="modal-close-btn">×</button>
+        <h3 data-key="api_modal_title">Set Generative AI API Key</h3>
+        <p class="mb-4 text-sm text-subheader" data-key="api_modal_text_1">To use the translation and Q&A features, please provide a valid API key from <b>Google
+            AI Studio</b>. Your key is stored securely in your browser and is never sent to our servers.</p>
+        <p class="mb-4 text-sm text-subheader" data-key="api_modal_text_2">This template is configured to use the free-tier <b>Gemma 3</b> model, so
+            using this feature should not incur any costs on your account.</p>
+        <input type="password" id="api-key-input" class="text-input" data-placeholder-key="api_modal_placeholder" placeholder="Enter your API key here">
+        <div class="flex items-center mb-4">
+            <input id="remember-api-key" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary-dark">
+            <label for="remember-api-key" class="ml-2 block text-sm text-gray-900" data-key="api_modal_remember_label">Remember key for future visits</label>
+        </div>
+        <button id="api-key-save-btn" class="modal-btn" data-key="api_modal_save_btn">Save Key</button>
+    </div>
+</div>
+
+<div id="translation-overlay">
+    <div class="loader"></div>
+    <p data-key="translation_overlay_text">Translating...</p>
+</div>
+
+<div id="qa-modal-overlay" class="modal-overlay">
+    <div class="modal-content">
+        <div id="qa-modal">
+            <button id="qa-modal-close-btn" class="modal-close-btn">×</button>
+            <div id="qa-modal-header">
+                <h2 class="text-2xl font-bold text-header" data-key="qa_title">Ask About This Template</h2>
+                <button id="clear-chat-btn" data-key="qa_clear_chat_btn">Clear Chat</button>
+            </div>
+            <div id="qa-chat-log" class="space-y-4"></div>
+            <form id="qa-input-form">
+                <input type="text" id="qa-input" data-placeholder-key="qa_input_placeholder" placeholder="e.g., How does the Q&A feature work?"
+                       class="flex-grow border border-gray-300 rounded-lg p-2">
+                <button type="submit" id="qa-send-btn" class="bg-primary text-white px-4 py-2 rounded-lg" data-key="qa_send_btn">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- END MODALS -->
+
+<footer id="main-footer">
+    <svg width="43.5" height="34.5" viewBox="0 0 87 69" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M68.069 26C68.069 26 63.1511 26 60 26H87H78.931C78.931 26 78.931 36.0563 78.931 42.5C78.931 48.9437 78.931 61 78.931 61C76.3448 64.3735 70.6552 66.3735 68.069 63C68.069 63 68.069 50.3342 68.069 43.5C68.069 36.6658 68.069 26 68.069 26Z"
+              stroke="#174052" stroke-width="8"/>
+        <path d="M32 50C28.5 46.5 13 50 13 50C13 50 23.2753 39.42 30.5 32C37.7247 24.58 48 12 48 12V42M48 54C48 49.3137 48 42 48 42M48 42H44" stroke="#174052"
+              stroke-width="8"/>
+        <path d="M73.5 2C73.5 3.95262 69.5 10 73.5 14" stroke="#008080" stroke-width="12"/>
+    </svg>
+    <p>&copy; All Rights Reserved<br>2025 Independent AI Labs</p>
+</footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const ToastManager = {
+            toastEl: document.getElementById('toast-notification'),
+            iconEl: document.getElementById('toast-icon'),
+            textEl: document.getElementById('toast-text'),
+            show(message, type = 'info', duration = 4000) {
+                this.textEl.textContent = message;
+                this.toastEl.className = '';
+                this.toastEl.classList.add('show');
+                if (type === 'warning') {
+                    this.iconEl.className = 'fa-solid fa-triangle-exclamation';
+                    this.toastEl.classList.add('warning');
+                } else if (type === 'error') {
+                    this.iconEl.className = 'fa-solid fa-circle-xmark';
+                    this.toastEl.classList.add('error');
+                } else {
+                    this.iconEl.className = 'fa-solid fa-circle-info';
+                }
+                setTimeout(() => {
+                    this.toastEl.classList.remove('show');
+                }, duration);
+            }
+        };
+
+        const AppConfig = {
+            API_KEY_STORAGE_KEY: 'infographicApiKey',
+            CHAT_HISTORY_STORAGE_KEY: 'qaChatHistory_meta',
+            PALETTE: {
+                primary: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+                primaryDark: getComputedStyle(document.documentElement).getPropertyValue('--primary-dark').trim(),
+                secondary: getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim(),
+                accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+                warning: getComputedStyle(document.documentElement).getPropertyValue('--warning').trim(),
+                textDarkGrey: getComputedStyle(document.documentElement).getPropertyValue('--text-dark-grey').trim(),
+                gridColor: '#E5E7EB',
+            },
+            BACKGROUND_PARTICLES: 100,
+        };
+
+        const TextData = {
+            map: {
+                en: {
+                    header_title: "The Smart Report Template",
+                    header_subtitle: "An Interactive Meta-Analysis",
+                    main_title: "The Smart Report Template",
+                    main_subtitle: "An interactive meta-analysis on building next-generation digital narratives with this very template and Google's Generative AI.",
+                    anatomy_title: "Anatomy of a Smart Report",
+                    anatomy_text: "A Smart Report is more than static text and images. It's a dynamic, multi-layered experience. Here we dissect the core components that bring this template to life.",
+                    gauge_title: "AI Integration Score",
+                    gauge_desc: "This gauge measures the depth of AI integration, from basic features to dynamic, real-time content generation.",
+                    gauge_popup_title: "What is the AI Integration Score?",
+                    gauge_popup_text: "The gauge visualizes the report's 'smartness.' A higher score indicates deeper integration of AI features like this Q&A, real-time translation, and potentially even AI-assisted data analysis. This template aims for the high end of the scale.",
+                    donut_title: "Template Codebase Breakdown",
+                    donut_desc: "A visual breakdown of the technologies used to build this very page. As you can see, JavaScript does the heavy lifting.",
+                    donut_popup_title: "Dissecting the Codebase",
+                    donut_popup_text: "This chart reveals the technology stack of the page itself. The large JavaScript portion powers the interactivity and chart rendering, while the 'GenAI Prompts' slice represents the structured text used to communicate with the AI model—the very instructions I am following now.",
+                    elements_title: "Interactive Elements",
+                    elements_text: "The number of distinct interactive components available in this template, from charts to modals.",
+                    elements_stat: "Unique component types available out-of-the-box.",
+                    elements_desc: "Each element is designed to be modular and easily customizable for your own data stories.",
+                    elements_popup_title: "The Components Toolkit",
+                    elements_popup_text: "This number represents the variety of tools at a developer's disposal within this template. It includes charts, modals, tabs, a guided tour, and more, all designed to create a more engaging and informative user experience than a static document.",
+                    genai_title: "The GenAI Engine: Powered by Google",
+                    radar_title: "Content Format Efficacy Comparison",
+                    radar_text: "How does a Smart Report stack up against traditional formats? This (completely unbiased, of course) chart visualizes the advantages across key metrics.",
+                    radar_popup_title: "Why Use a Smart Report?",
+                    radar_popup_text: "This radar chart provides a (perhaps slightly biased) comparison of content formats. The goal is to visually argue that the combination of data depth, interactivity, and engagement in a Smart Report makes it a superior medium for conveying complex information.",
+                    workflow_title: "The Development Workflow",
+                    tabs_popup_title: "Layering Information with Tabs",
+                    tabs_popup_text: "Tabs are an excellent tool for layering information. They allow users to explore different facets of a topic—like the process, the technical details, and the guiding principles—at their own pace, reducing cognitive load.",
+                    workflow_tab1_button: "The Workflow",
+                    workflow_tab2_button: "Code Snippet",
+                    workflow_tab3_button: "Key Considerations",
+                    workflow_tab1_title: "From Idea to Insight: A 4-Step Process",
+                    workflow_tab1_text: "Using this template simplifies the creation of a Smart Report into four manageable stages.",
+                    step1_title: "1. Define Narrative",
+                    step1_text: "Outline the story you want to tell with your data.",
+                    step2_title: "2. Curate Data",
+                    step2_text: "Gather and structure the data needed for your visuals.",
+                    step3_title: "3. Configure Components",
+                    step3_text: "Copy, paste, and configure the interactive elements.",
+                    step4_title: "4. Write AI Prompts",
+                    step4_text: "Craft the context for the AI Q&A and translation features.",
+                    workflow_tab2_title: "Example: Initializing a Chart",
+                    workflow_tab2_text: "Adding a new chart is straightforward. Here is the JavaScript for the Donut Chart you saw earlier. Use the copy button to grab it!",
+                    workflow_tab3_title: "Guiding Principles",
+                    workflow_tab3_text: "Building an effective report goes beyond code. Keep these principles in mind.",
+                    principle1: "<b>Audience First:</b> Design for your user's needs and level of expertise.",
+                    principle2: "<b>Data Integrity:</b> Ensure your data is accurate, well-sourced, and presented without deception.",
+                    principle3: "<b>Performance Matters:</b> Optimize assets and code for a smooth experience, especially on mobile.",
+                    principle4: "<b>Ethical AI:</b> Be transparent about AI usage. Write clear, unbiased prompts to avoid generating misinformation.",
+                    impact_title: "Measuring the Impact",
+                    impact_text: "The true value of a Smart Report lies in its superior ability to engage and inform. The following data, while hypothetical, illustrates the potential return on investment.",
+                    map_title: "Global Adoption of the Smart Report Standard (2025 Est.)",
+                    map_popup_title: "Visualizing Global Adoption",
+                    map_popup_text: "This map visualizes the hypothetical global adoption of this report format. Darker regions indicate where organizations have more widely replaced static PDFs and slideshows with interactive, AI-enhanced reports for their internal and external communications.",
+                    stackedbar_title: "User Engagement Time by Role",
+                    stackedbar_desc: "Average time spent interacting with content, comparing a Smart Report to a static equivalent.",
+                    stackedbar_popup_title: "The Value of Engagement",
+                    stackedbar_popup_text: "This chart demonstrates a key value proposition: increased user engagement. By allowing users to interact with the data, ask questions, and explore, Smart Reports hold attention longer, leading to better information retention and comprehension across all audience types.",
+                    scatter_title: "Analysis of Cost vs. Impact",
+                    scatter_desc: "This template aims to shift the \"Smart Report\" bubble left, reducing cost while maintaining high impact.",
+                    scatter_popup_title: "The Cost vs. Impact Quadrant",
+                    scatter_popup_text: "This plot illustrates the cost-benefit analysis of different reporting formats. While a Smart Report requires more initial effort than a PDF, this template is designed to lower that cost, providing a disproportionately high impact and return on investment through superior user engagement and understanding.",
+                    conclusion_main_msg: "Your Data Has a Story. Tell It Brilliantly.",
+                    conclusion_sub_msg: "This template provides the canvas, the tools, and the intelligence to transform raw data into compelling, interactive narratives. The future of communication is not just about presenting facts; it's about creating understanding.",
+                    foreword_title: "Fork, Customize, and Innovate",
+                    foreword_text: "This is a living document and an open starting point. We encourage you to download, adapt, and build upon this foundation to create your own insightful Smart Reports. The complete source is available for you to explore.",
+                    download_button_text: "View Source on GitHub",
+                    bibliography_title: "Link Resources & Further Reading",
+                    bibliography_text: "Explore the technologies and concepts that power this template. Use the search box to filter resources.",
+                    bibliography_search_placeholder: "Search resources (e.g., 'Gemini', 'Chart.js', 'Interaction Design')...",
+                    bibliography_source_label: "Source:",
+                    info_popup_ask_btn: "Ask for Elaboration",
+                    qa_title: "Ask About This Template",
+                    qa_send_btn: "Send",
+                    qa_clear_chat_btn: "Clear Chat",
+                    qa_prefilled_query: 'Tell me more about the "{title}".',
+                    qa_input_placeholder: "e.g., How does the Q&A feature work?",
+                    qa_thinking: "Thinking...",
+                    api_modal_title: "Set Generative AI API Key",
+                    api_modal_text_1: "To use the translation and Q&A features, please provide a valid API key from <b>Google AI Studio</b>. Your key is stored securely in your browser and is never sent to our servers.",
+                    api_modal_text_2: "This template is configured to use the free-tier Gemma 3 model, so using this feature should not incur costs on your account for typical usage.",
+                    api_modal_placeholder: "Enter your API key here",
+                    api_modal_save_btn: "Save Key",
+                    api_modal_remember_label: "Remember key for future visits",
+                    translation_overlay_text: "Translating...",
+                    tour_intro_title: "<h1>Welcome to the Meta-Report</h1>",
+                    tour_intro_text: "<p>This tour will guide you through the features of the Smart Report Template itself. We're going to explore how it works by, well, using it. Let's get meta.</p>",
+                    tour_gauge_title: "<h1>The 'Smartness' Score</h1>",
+                    tour_gauge_text: "<p>First, the Anatomy. This gauge represents the AI Integration Score. We've given ourselves a <strong>95%</strong>, reflecting deep integration of features like translation and the Q&A you're using now.</p>",
+                    tour_donut_title: "<h1>What's Under the Hood?</h1>",
+                    tour_donut_text: "<p>This donut chart breaks down the template's own codebase. As you can see, <strong>JavaScript (55%)</strong> is the engine driving all this interactivity.</p>",
+                    tour_elements_title: "<h1>A Robust Toolkit</h1>",
+                    tour_elements_text: "<p>The template provides over <strong>12 unique interactive components</strong> right out of the box, giving you a rich toolkit to build your own data stories without starting from scratch.</p>",
+                    tour_radar_title: "<h1>Why Bother? The Efficacy Argument</h1>",
+                    tour_radar_text: "<p>This radar chart makes the case for why Smart Reports are superior to static PDFs or PowerPoints. Across metrics like Engagement and Interactivity, the advantages are... clear.</p>",
+                    tour_tabs_title: "<h1>Workflow: From Idea to Insight</h1>",
+                    tour_tabs_text: "<p>This tabbed component demonstrates how to organize complex information cleanly. It walks through the <strong>4-step process</strong> for using this template, from defining your story to writing AI prompts.</p>",
+                    tour_map_title: "<h1>Measuring Impact: Global Adoption</h1>",
+                    tour_map_text: "<p>To demonstrate value, we can visualize impact. This map shows a hypothetical 'Global Adoption' of this very report standard, illustrating its potential reach and influence.</p>",
+                    tour_stacked_bar_title: "<h1>Keeping Users Engaged</h1>",
+                    tour_stacked_bar_text: "<p>A key metric is engagement. This chart shows how a Smart Report can dramatically <strong>increase the time users spend</strong> with your content compared to a static document.</p>",
+                    tour_scatter_title: "<h1>The Sweet Spot: Cost vs. Impact</h1>",
+                    tour_scatter_text: "<p>Finally, the ROI. This scatter plot shows that while Smart Reports have a higher cost than PDFs, this template significantly lowers that barrier, placing it in the <strong>high-impact, moderate-cost</strong> 'sweet spot'.</p>",
+                    tour_conclusion_title: "<h1>Now, It's Your Turn</h1>",
+                    tour_conclusion_text: "<p>The tour is complete. You've seen the components, the workflow, and the potential impact. This template is a starting point for you to create your own brilliant, data-driven narratives.</p>"
+                }
+            },
+            get(lang) {
+                return this.map[lang] || this.map.en;
+            },
+            set(lang, data) {
+                this.map[lang] = data;
+            }
+        };
+
+        const APIHandler = {
+            getApiKey() {
+                return sessionStorage.getItem(AppConfig.API_KEY_STORAGE_KEY) || localStorage.getItem(AppConfig.API_KEY_STORAGE_KEY);
+            },
+            async generateContent(prompt) {
+                const apiKey = this.getApiKey();
+                if (!apiKey) {
+                    UIManager.showApiKeyModal();
+                    ToastManager.show('API Key is required for this feature.', 'warning');
+                    return {error: "API Key not set."};
+                }
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${apiKey}`;
+                const payload = {contents: [{role: "user", parts: [{text: prompt}]}]};
+                try {
+                    const response = await fetch(apiUrl, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+                    }
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0].content.parts[0]) {
+                        return {data: result.candidates[0].content.parts[0].text};
+                    } else {
+                        throw new Error("Invalid API response structure.");
+                    }
+                } catch (error) {
+                    console.error("AI API Error:", error);
+                    ToastManager.show(`AI Error: ${error.message}`, 'error');
+                    return {error: error.message};
+                }
+            }
+        };
+
+        const UIManager = {
+            elements: {
+                infoPopup: document.getElementById('info-popup'),
+                infoPopupTitle: document.getElementById('info-popup-title'),
+                infoPopupText: document.getElementById('info-popup-text'),
+                apiKeyModal: document.getElementById('api-key-modal'),
+                apiKeyInput: document.getElementById('api-key-input'),
+                rememberApiKeyCheckbox: document.getElementById('remember-api-key'),
+                qaModalOverlay: document.getElementById('qa-modal-overlay'),
+                qaInput: document.getElementById('qa-input'),
+                translationOverlay: document.getElementById('translation-overlay'),
+                langSelect: document.getElementById('lang-select'),
+                headerProgressBar: document.getElementById('header-progress-bar'),
+                headerTourContent: document.getElementById('header-tour-content'),
+                headerDefaultContent: document.getElementById('header-default-content'),
+            },
+
+            init() {
+                this.initEventListeners();
+                this.updateTextForLanguage(this.elements.langSelect.value);
+            },
+
+            showInfoPopup(titleKey, textKey) {
+                if (TourManager.isPlaying) TourManager.pauseTour();
+                this.elements.infoPopup.classList.add('show');
+                const lang = this.elements.langSelect.value;
+                const currentText = TextData.get(lang);
+                this.elements.infoPopupTitle.textContent = currentText[titleKey] || titleKey;
+                this.elements.infoPopupText.textContent = currentText[textKey] || textKey;
+            },
+
+            hideInfoPopup() {
+                this.elements.infoPopup.classList.remove('show');
+            },
+            showApiKeyModal() {
+                this.elements.apiKeyModal.classList.add('show');
+            },
+            hideApiKeyModal() {
+                this.elements.apiKeyModal.classList.remove('show');
+            },
+            showQAModal(prefilledQuery = '') {
+                this.elements.qaModalOverlay.classList.add('show');
+                if (prefilledQuery) {
+                    this.elements.qaInput.value = prefilledQuery;
+                    this.elements.qaInput.focus();
+                }
+            },
+            hideQAModal() {
+                this.elements.qaModalOverlay.classList.remove('show');
+            },
+            showTranslationOverlay() {
+                this.elements.translationOverlay.classList.add('show');
+            },
+            hideTranslationOverlay() {
+                this.elements.translationOverlay.classList.remove('show');
+            },
+
+            updateTextForLanguage(lang) {
+                const currentText = TextData.get(lang);
+                if (!currentText) return;
+
+                document.querySelectorAll('[data-key]').forEach(el => {
+                    const key = el.dataset.key;
+                    if (currentText[key] !== undefined) {
+                        const icon = el.querySelector('i');
+                        if (icon && !el.classList.contains('btn-primary') && el.closest('div > .btn-primary') === null) {
+                            el.innerHTML = icon.outerHTML + ' ' + currentText[key];
+                        } else {
+                            el.innerHTML = currentText[key];
+                        }
+                    }
+                });
+
+                document.querySelectorAll('[data-placeholder-key]').forEach(el => {
+                    const key = el.dataset.placeholderKey;
+                    if (currentText[key] !== undefined) {
+                        el.placeholder = currentText[key];
+                    }
+                });
+            },
+
+            updateHeaderForTour(titleHTML, textHTML) {
+                const tourCardHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <div id="tour-navigation-controls-landscape" style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
+                                <button id="tour-prev-btn-landscape" class="header-btn-nav" title="Previous Stop"><i class="fa-solid fa-chevron-left"></i></button>
+                                <span id="tour-status">${TourManager.currentIndex + 1} / ${TourManager.tourData.length}</span>
+                                <button id="tour-next-btn-landscape" class="header-btn-nav" title="Next Stop"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                            ${titleHTML}
+                        </div>
+                        <div>${textHTML}</div>
+                    </div>`;
+                this.elements.headerDefaultContent.style.display = 'none';
+                this.elements.headerTourContent.style.display = 'block';
+                this.elements.headerTourContent.innerHTML = tourCardHTML;
+            },
+
+            resetHeader() {
+                this.elements.headerTourContent.style.display = 'none';
+                this.elements.headerTourContent.innerHTML = '';
+                this.elements.headerDefaultContent.style.display = 'block';
+            },
+
+            startHeaderCountdown(duration) {
+                const progressBar = this.elements.headerProgressBar;
+                progressBar.style.transition = 'none';
+                progressBar.style.width = '100%';
+                requestAnimationFrame(() => setTimeout(() => {
+                    progressBar.style.transition = `width ${duration / 1000}s linear`;
+                    progressBar.style.width = '0%';
+                }, 50));
+            },
+
+            initEventListeners() {
+                const isApiKeySet = () => !!APIHandler.getApiKey();
+                const handleMissingApiKey = () => {
+                    this.showApiKeyModal();
+                    ToastManager.show('API Key is required for this feature.', 'warning');
+                };
+
+                document.body.addEventListener('click', (event) => {
+                    const infoPopup = event.target.closest('.info-clickable');
+                    if (infoPopup) {
+                        event.stopPropagation();
+                        if (TourManager.isPlaying) TourManager.pauseTour();
+                        this.showInfoPopup(infoPopup.dataset.infoTitleKey, infoPopup.dataset.infoTextKey);
+                    }
+                });
+
+                document.getElementById('info-popup-close-btn').addEventListener('click', () => this.hideInfoPopup());
+                document.getElementById('info-popup-ask-btn').addEventListener('click', () => {
+                    if (!isApiKeySet()) {
+                        handleMissingApiKey();
+                        return;
+                    }
+                    const title = this.elements.infoPopupTitle.textContent;
+                    const lang = this.elements.langSelect.value;
+                    const queryTemplate = TextData.get(lang).qa_prefilled_query || 'Tell me more about "{title}".';
+                    const prefilledQuery = queryTemplate.replace('{title}', title);
+                    this.hideInfoPopup();
+                    this.showQAModal(prefilledQuery);
+                });
+                document.getElementById('api-key-button').addEventListener('click', () => this.showApiKeyModal());
+                document.getElementById('api-key-close-btn').addEventListener('click', () => this.hideApiKeyModal());
+
+                document.getElementById('api-key-save-btn').addEventListener('click', () => {
+                    const apiKey = this.elements.apiKeyInput.value.trim();
+                    const rememberKey = this.elements.rememberApiKeyCheckbox.checked;
+                    localStorage.removeItem(AppConfig.API_KEY_STORAGE_KEY);
+                    sessionStorage.removeItem(AppConfig.API_KEY_STORAGE_KEY);
+                    if (apiKey) {
+                        if (rememberKey) localStorage.setItem(AppConfig.API_KEY_STORAGE_KEY, apiKey);
+                        else sessionStorage.setItem(AppConfig.API_KEY_STORAGE_KEY, apiKey);
+                        ToastManager.show('API Key settings saved.');
+                    } else {
+                        ToastManager.show('API Key cleared.', 'info');
+                    }
+                    this.hideApiKeyModal();
+                });
+                document.getElementById('ask-ai-button').addEventListener('click', () => {
+                    if (!isApiKeySet()) {
+                        handleMissingApiKey();
+                        return;
+                    }
+                    this.showQAModal();
+                });
+                document.getElementById('qa-modal-close-btn').addEventListener('click', () => this.hideQAModal());
+
+                this.elements.infoPopup.addEventListener('click', (e) => {
+                    if (e.target === this.elements.infoPopup) this.hideInfoPopup();
+                });
+                this.elements.apiKeyModal.addEventListener('click', (e) => {
+                    if (e.target === this.elements.apiKeyModal) this.hideApiKeyModal();
+                });
+                this.elements.qaModalOverlay.addEventListener('click', (e) => {
+                    if (e.target === this.elements.qaModalOverlay) this.hideQAModal();
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape') {
+                        if (this.elements.infoPopup.classList.contains('show')) this.hideInfoPopup();
+                        if (this.elements.apiKeyModal.classList.contains('show')) this.hideApiKeyModal();
+                        if (this.elements.qaModalOverlay.classList.contains('show')) this.hideQAModal();
+                    }
+                });
+            }
+        };
+
+        const TourManager = {
+            tourData: [], currentIndex: 0, isPlaying: false, tourInterval: null,
+            highlighterElement: null, audioPlayer: null, portraitControlsContainer: null,
+            init() {
+                this.tourButton = document.getElementById('tour-button');
+                this.audioPlayer = document.getElementById('tour-audio-player');
+                this.portraitControlsContainer = document.getElementById('tour-navigation-controls');
+                this.tourData = [
+                    {elementSelector: '.video-container', titleKey: 'tour_intro_title', textKey: 'tour_intro_text'},
+                    {elementSelector: '#gauge-card', titleKey: 'tour_gauge_title', textKey: 'tour_gauge_text'},
+                    {elementSelector: '#donut-card', titleKey: 'tour_donut_title', textKey: 'tour_donut_text'},
+                    {elementSelector: '#interactive-elements-card', titleKey: 'tour_elements_title', textKey: 'tour_elements_text'},
+                    {elementSelector: '#radar-card', titleKey: 'tour_radar_title', textKey: 'tour_radar_text'},
+                    {elementSelector: '#tabs-card', titleKey: 'tour_tabs_title', textKey: 'tour_tabs_text'},
+                    {elementSelector: '#mapChart', titleKey: 'tour_map_title', textKey: 'tour_map_text'},
+                    {elementSelector: '#stacked-bar-card', titleKey: 'tour_stacked_bar_title', textKey: 'tour_stacked_bar_text'},
+                    {elementSelector: '#scatter-plot-card', titleKey: 'tour_scatter_title', textKey: 'tour_scatter_text'},
+                    {elementSelector: '#section-conclusion .tour-element', titleKey: 'tour_conclusion_title', textKey: 'tour_conclusion_text'}
+                ];
+
+                this.highlighterElement = document.createElement('div');
+                this.highlighterElement.className = 'tour-highlighter';
+                document.body.appendChild(this.highlighterElement);
+
+                this.tourButton.addEventListener('click', () => this.toggleTour());
+
+                document.getElementById('main-header-content-wrapper').addEventListener('click', (event) => {
+                    if (event.target.closest('#tour-prev-btn-portrait') || event.target.closest('#tour-prev-btn-landscape')) {
+                        if (this.currentIndex > 0) this.goToStop(this.currentIndex - 1, false);
+                    } else if (event.target.closest('#tour-next-btn-portrait') || event.target.closest('#tour-next-btn-landscape')) {
+                        if (this.currentIndex < this.tourData.length - 1) this.goToStop(this.currentIndex + 1, false);
+                    }
+                });
+            },
+            calculateDurationFromText(text) {
+                if (!text) return 5000;
+                const words = text.replace(/<[^>]*>/g, ' ').split(/\s+/).length;
+                const seconds = (words / 150) * 60;
+                return Math.max(2000 + (seconds * 1000), 4000);
+            },
+            toggleTour() {
+                this.isPlaying ? this.pauseTour() : this.startTour();
+            },
+            startTour() {
+                if (this.currentIndex >= this.tourData.length) this.currentIndex = 0;
+                this.isPlaying = true;
+                this.tourButton.innerHTML = '<i class="fa-solid fa-pause"></i>';
+                if (this.portraitControlsContainer) this.portraitControlsContainer.style.display = 'flex';
+                this.goToStop(this.currentIndex, true);
+            },
+            pauseTour() {
+                if (!this.isPlaying) return;
+                this.isPlaying = false;
+                this.tourButton.innerHTML = '<i class="fa-solid fa-play"></i>';
+                clearTimeout(this.tourInterval);
+                this.tourInterval = null;
+                this.audioPlayer.pause();
+                this.audioPlayer.src = '';
+                UIManager.resetHeader();
+                this.highlighterElement.style.opacity = '0';
+                UIManager.elements.headerProgressBar.style.transition = 'none';
+                UIManager.elements.headerProgressBar.style.width = '0%';
+            },
+            goToStop(index, autoAdvance = false) {
+                if (this.isPlaying && !autoAdvance) this.pauseTour();
+                clearTimeout(this.tourInterval);
+                this.tourInterval = null;
+                this.audioPlayer.pause();
+                this.currentIndex = index;
+                const stop = this.tourData[index];
+                const targetElement = document.querySelector(stop.elementSelector);
+                const portraitStatusEl = document.getElementById('tour-status-portrait');
+                if (portraitStatusEl) portraitStatusEl.textContent = `${this.currentIndex + 1} / ${this.tourData.length}`;
+
+                if (targetElement) {
+                    const headerHeight = document.getElementById('tour-header').offsetHeight || 130;
+                    const offset = headerHeight + (2 * 16);
+                    const elementPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+                    window.scrollTo({top: elementPosition - offset, behavior: 'smooth'});
+
+                    this.highlighterElement.style.opacity = '0';
+                    setTimeout(() => {
+                        const rect = targetElement.getBoundingClientRect();
+                        this.highlighterElement.style.transition = 'none';
+                        this.highlighterElement.style.width = `${rect.width + 10}px`;
+                        this.highlighterElement.style.height = `${rect.height + 10}px`;
+                        this.highlighterElement.style.top = `${rect.top + window.scrollY - 5}px`;
+                        this.highlighterElement.style.left = `${rect.left - 5}px`;
+                        this.highlighterElement.offsetHeight;
+                        this.highlighterElement.style.transition = 'opacity 0.4s ease-in-out';
+                        this.highlighterElement.style.opacity = '1';
+                    }, 400);
+                }
+
+                const lang = UIManager.elements.langSelect.value;
+                UIManager.updateHeaderForTour(TextData.get(lang)[stop.titleKey], TextData.get(lang)[stop.textKey]);
+
+                if (this.isPlaying && autoAdvance) {
+                    const duration = this.calculateDurationFromText(TextData.get(lang)[stop.textKey]);
+                    UIManager.startHeaderCountdown(duration);
+                    this.tourInterval = setTimeout(() => {
+                        const nextIndex = this.currentIndex + 1 < this.tourData.length ? this.currentIndex + 1 : 0;
+                        if (nextIndex === 0) this.pauseTour();
+                        else this.goToStop(nextIndex, true);
+                    }, duration);
+                } else {
+                    UIManager.elements.headerProgressBar.style.transition = 'none';
+                    UIManager.elements.headerProgressBar.style.width = '0%';
+                }
+            }
+        };
+
+        const BackgroundAnimation = {
+            canvas: document.getElementById('particle-canvas'), ctx: null, particles: [],
+            init() {
+                if (!this.canvas) return;
+                this.ctx = this.canvas.getContext('2d');
+                this.handleResize();
+                this.createParticles();
+                this.animate();
+                window.addEventListener('resize', () => this.handleResize());
+            },
+            handleResize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            },
+            createParticles() {
+                this.particles = [];
+                for (let i = 0; i < AppConfig.BACKGROUND_PARTICLES; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width, y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, size: Math.random() * 2 + 1
+                    });
+                }
+            },
+            animate() {
+                if (!this.ctx) return;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = 'rgba(0, 128, 128, 0.5)';
+                this.ctx.strokeStyle = 'rgba(0, 128, 128, 0.1)';
+                this.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0 || p.x > this.canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > this.canvas.height) p.vy *= -1;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                for (let i = 0; i < this.particles.length; i++) {
+                    for (let j = i; j < this.particles.length; j++) {
+                        if (Math.hypot(this.particles[i].x - this.particles[j].x, this.particles[i].y - this.particles[j].y) < 100) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
+                            this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+                requestAnimationFrame(() => this.animate());
+            }
+        };
+
+        (function ChartManager() {
+            const gaugeTextPlugin = {
+                id: 'gaugeText',
+                afterDraw(chart) {
+                    if (chart.config.options?.plugins?.gauge?.display === false) {
+                        return;
+                    }
+                    const {ctx, data} = chart;
+                    const value = data.datasets[0].data[0];
+                    const text = `${value}%`;
+                    ctx.save();
+                    const x = (chart.chartArea.left + chart.chartArea.right) / 2;
+                    const y = (chart.chartArea.top + chart.chartArea.bottom) / 1.65;
+                    ctx.font = `bold 24px ${Chart.defaults.font.family}`;
+                    ctx.fillStyle = AppConfig.PALETTE.textDarkest;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text, x, y);
+                    ctx.restore();
+                }
+            };
+            Chart.register(gaugeTextPlugin);
+
+            const commonChartOptions = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {legend: {labels: {color: AppConfig.PALETTE.textDarkGrey}}},
+                scales: {
+                    y: {beginAtZero: true, ticks: {color: AppConfig.PALETTE.textDarkGrey}, grid: {color: AppConfig.PALETTE.gridColor}},
+                    x: {ticks: {color: AppConfig.PALETTE.textDarkGrey}, grid: {color: AppConfig.PALETTE.gridColor}}
+                }
+            };
+
+            if (document.getElementById('gaugeChart')) {
+                new Chart(document.getElementById('gaugeChart'), {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{data: [95, 5], backgroundColor: [AppConfig.PALETTE.primary, '#f0f0f0'], borderWidth: 0, circumference: 180, rotation: -90}]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '80%',
+                        plugins: {legend: {display: false}, tooltip: {enabled: false}, gauge: {display: true}}
+                    }
+                });
+            }
+
+            if (document.getElementById('donutChart')) {
+                new Chart(document.getElementById('donutChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['JavaScript', 'HTML', 'CSS', 'GenAI Prompts'],
+                        datasets: [{
+                            data: [55, 25, 15, 5],
+                            backgroundColor: [AppConfig.PALETTE.primary, AppConfig.PALETTE.primaryDark, AppConfig.PALETTE.secondary, AppConfig.PALETTE.accent],
+                            borderColor: '#ffffff', borderWidth: 2
+                        }]
+                    },
+                    options: {...commonChartOptions, plugins: {legend: {position: 'bottom'}}}
+                });
+            }
+
+            if (document.getElementById('radarChart')) {
+                new Chart(document.getElementById('radarChart'), {
+                    type: 'radar',
+                    data: {
+                        labels: ['Engagement', 'Data Depth', 'Interactivity', 'Memorability', 'Updateability'],
+                        datasets: [
+                            {
+                                label: 'Smart Report',
+                                data: [10, 9, 10, 8, 9],
+                                backgroundColor: 'rgba(0, 128, 128, 0.2)',
+                                borderColor: AppConfig.PALETTE.primary,
+                                pointBackgroundColor: AppConfig.PALETTE.primary
+                            },
+                            {
+                                label: 'Static PDF',
+                                data: [3, 7, 1, 4, 2],
+                                backgroundColor: 'rgba(207, 28, 0, 0.2)',
+                                borderColor: AppConfig.PALETTE.warning,
+                                pointBackgroundColor: AppConfig.PALETTE.warning
+                            }
+                        ]
+                    },
+                    options: {...commonChartOptions, scales: {r: {beginAtZero: true, max: 10, pointLabels: {color: AppConfig.PALETTE.textDarkGrey}}}}
+                });
+            }
+
+            if (document.getElementById('mapChart')) {
+                const mapData = {
+                    'High Adoption (90%+)': {rate: 95, countries: ['USA', 'CAN', 'GBR', 'FRA', 'DEU', 'NLD', 'SWE', 'NOR', 'CHE', 'JPN']},
+                    'Medium Adoption (60-80%)': {rate: 70, countries: ['BRA', 'ARG', 'MEX', 'ITA', 'ESP', 'AUS', 'NZL', 'KOR', 'CHN', 'IND']},
+                    'Early Adoption (30-50%)': {rate: 40, countries: ['ZAF', 'NGA', 'EGY', 'SAU', 'ARE', 'RUS', 'POL', 'IDN', 'VNM']},
+                };
+                let locations = [], z_values = [], hover_text = [];
+                for (const region in mapData) {
+                    mapData[region].countries.forEach(country => {
+                        locations.push(country);
+                        z_values.push(mapData[region].rate);
+                        hover_text.push(`${country}: ${region}`);
+                    });
+                }
+                Plotly.newPlot('mapChart', [{
+                    type: 'choropleth',
+                    locationmode: 'ISO-3',
+                    locations: locations,
+                    z: z_values,
+                    text: hover_text,
+                    hoverinfo: 'text',
+                    colorscale: [[0, '#EAF2F2'], [1, AppConfig.PALETTE.primaryDark]],
+                    showscale: true,
+                    colorbar: {
+                        title: 'Adoption %',
+                        orientation: 'h',
+                        x: 0.5,
+                        xanchor: 'center',
+                        y: -0.1,
+                        yanchor: 'bottom',
+                        tickfont: {color: AppConfig.PALETTE.textDarkGrey},
+                        titlefont: {color: AppConfig.PALETTE.textDarkGrey}
+                    }
+                }], {
+                    geo: {projection: {type: 'robinson'}, bgcolor: 'rgba(0,0,0,0)', showland: true, landcolor: '#E5E7EB', subunitcolor: '#FFFFFF'},
+                    margin: {t: 0, b: 0, l: 0, r: 0}, paper_bgcolor: 'rgba(0,0,0,0)', font: {family: 'Montserrat, sans-serif'}
+                }, {responsive: true});
+            }
+
+            if (document.getElementById('stackedBarChart')) {
+                new Chart(document.getElementById('stackedBarChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Analysts', 'Executives', 'Clients'],
+                        datasets: [
+                            {label: 'Static PDF', data: [5, 2, 1.5], backgroundColor: AppConfig.PALETTE.accent},
+                            {label: 'Smart Report', data: [12, 8, 7], backgroundColor: AppConfig.PALETTE.primary}
+                        ]
+                    },
+                    options: {
+                        ...commonChartOptions,
+                        scales: {
+                            x: {stacked: true},
+                            y: {stacked: true, title: {display: true, text: 'Avg. Engagement (Minutes)', color: AppConfig.PALETTE.textDarkGrey}}
+                        }
+                    }
+                });
+            }
+
+            if (document.getElementById('scatterPlot')) {
+                new Chart(document.getElementById('scatterPlot'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [
+                            {label: 'Static PDF', data: [{x: 1, y: 2}], backgroundColor: AppConfig.PALETTE.warning, pointRadius: 10},
+                            {label: 'PowerPoint', data: [{x: 3, y: 5}], backgroundColor: AppConfig.PALETTE.secondary, pointRadius: 10},
+                            {label: 'Smart Report (Template)', data: [{x: 5, y: 9}], backgroundColor: AppConfig.PALETTE.primary, pointRadius: 15},
+                            {label: 'Fully Custom App', data: [{x: 10, y: 10}], backgroundColor: AppConfig.PALETTE.primaryDark, pointRadius: 10}
+                        ]
+                    },
+                    options: {
+                        ...commonChartOptions,
+                        scales: {
+                            x: {title: {display: true, text: 'Relative Cost / Effort', color: AppConfig.PALETTE.textDarkGrey}, min: 0, max: 11},
+                            y: {title: {display: true, text: 'Relative Impact / Engagement', color: AppConfig.PALETTE.textDarkGrey}, min: 0, max: 11}
+                        }
+                    }
+                });
+            }
+        })();
+
+        (function ExtraInteractivityManager() {
+            const tabContainer = document.querySelector('.tabs-container');
+            if (tabContainer) {
+                tabContainer.addEventListener('click', (e) => {
+                    if (e.target.matches('.tab-button')) {
+                        const tabId = e.target.dataset.tab;
+                        tabContainer.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.classList.remove('active');
+                            if (content.id === tabId) content.classList.add('active');
+                        });
+                    }
+                });
+            }
+            const copyBtn = document.querySelector('.copy-code-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    const code = copyBtn.nextElementSibling.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        ToastManager.show('Code copied to clipboard!', 'info');
+                    }).catch(err => {
+                        ToastManager.show('Failed to copy code.', 'error');
+                    });
+                });
+            }
+        })();
+
+        (function TranslationManager() {
+            const langSelect = document.getElementById('lang-select');
+            const isApiKeySet = () => !!APIHandler.getApiKey();
+
+            async function translateAllText(targetLang) {
+                if (targetLang === 'en') {
+                    UIManager.updateTextForLanguage('en');
+                    return;
+                }
+                const cached = localStorage.getItem(`translation_${targetLang}`);
+                if (cached) {
+                    TextData.set(targetLang, JSON.parse(cached));
+                    UIManager.updateTextForLanguage(targetLang);
+                    return;
+                }
+                UIManager.showTranslationOverlay();
+                langSelect.disabled = true;
+                const prompt = `Translate the following JSON object of UI strings into ${langSelect.options[langSelect.selectedIndex].text.split(' ')[1]}. Return ONLY the translated JSON object, maintaining the exact same keys. Do not add any extra text, explanations, or markdown code fences. JSON to translate: ${JSON.stringify(TextData.get('en'))}`;
+                const result = await APIHandler.generateContent(prompt);
+                if (result.data) {
+                    try {
+                        const jsonData = result.data.replace(/```json\n?/, '').replace(/```$/, '');
+                        const translatedJson = JSON.parse(jsonData);
+                        TextData.set(targetLang, translatedJson);
+                        localStorage.setItem(`translation_${targetLang}`, JSON.stringify(translatedJson));
+                        UIManager.updateTextForLanguage(targetLang);
+                    } catch (e) {
+                        ToastManager.show('Translation failed: Could not parse AI response.', 'error');
+                        console.error("Translation parsing error", e, "Response was:", result.data);
+                    }
+                }
+                UIManager.hideTranslationOverlay();
+                langSelect.disabled = false;
+            }
+
+            langSelect.addEventListener('change', (e) => {
+                if (e.target.value !== 'en' && !isApiKeySet()) {
+                    e.target.value = 'en';
+                    UIManager.showApiKeyModal();
+                    ToastManager.show('API Key is required for translation.', 'warning');
+                    return;
+                }
+                translateAllText(e.target.value);
+            });
+        })();
+
+        (function QAManager() {
+            const qaForm = document.getElementById('qa-input-form');
+            const qaInput = document.getElementById('qa-input');
+            const qaChatLog = document.getElementById('qa-chat-log');
+            const clearChatBtn = document.getElementById('clear-chat-btn');
+            const markdownConverter = new showdown.Converter();
+            let chatHistory = [];
+
+            function saveChatHistory() {
+                localStorage.setItem(AppConfig.CHAT_HISTORY_STORAGE_KEY, JSON.stringify(chatHistory));
+            }
+
+            function loadChatHistory() {
+                const savedHistory = localStorage.getItem(AppConfig.CHAT_HISTORY_STORAGE_KEY);
+                if (savedHistory) {
+                    chatHistory = JSON.parse(savedHistory);
+                    qaChatLog.innerHTML = '';
+                    chatHistory.forEach(msg => appendMessage(msg.text, msg.sender, msg.isMarkdown));
+                }
+            }
+
+            function appendMessage(text, sender, isMarkdown = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${sender}-message`;
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = 'msg-bubble';
+                bubbleDiv.innerHTML = isMarkdown ? markdownConverter.makeHtml(text) : text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                messageDiv.appendChild(bubbleDiv);
+                qaChatLog.appendChild(messageDiv);
+                qaChatLog.scrollTop = qaChatLog.scrollHeight;
+            }
+
+            clearChatBtn.addEventListener('click', () => {
+                chatHistory = [];
+                qaChatLog.innerHTML = '';
+                localStorage.removeItem(AppConfig.CHAT_HISTORY_STORAGE_KEY);
+            });
+            qaForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userQuery = qaInput.value.trim();
+                if (!userQuery) return;
+                appendMessage(userQuery, 'user');
+                chatHistory.push({text: userQuery, sender: 'user', isMarkdown: false});
+                qaInput.value = '';
+
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'chat-message ai-message';
+                const lang = UIManager.elements.langSelect.value;
+                thinkingDiv.innerHTML = `<div class="msg-bubble">${TextData.get(lang).qa_thinking || 'Thinking...'}</div>`;
+                qaChatLog.appendChild(thinkingDiv);
+                qaChatLog.scrollTop = qaChatLog.scrollHeight;
+
+                const context = document.getElementById('fact-matrix-data').textContent;
+                const historyString = chatHistory.slice(0, -1).map(msg => `${msg.sender === 'user' ? 'User' : 'Assistant'}: ${msg.text}`).join('\n\n');
+                const prompt = `You are a helpful assistant analyzing a 'Smart Report Template'. Based ONLY on the following context and conversation history, answer the user's latest question. Use Markdown for formatting if helpful (e.g., lists, bolding). If the answer is not in the context, state that you cannot find the information in the provided document. Always reply in the language of the user's last question.\n\nCONTEXT:\n"""\n${context}\n"""\n\nCONVERSATION HISTORY:\n"""\n${historyString}\n"""\n\nLATEST USER QUESTION: "${userQuery}"`;
+
+                const result = await APIHandler.generateContent(prompt);
+                let aiResponse = result.data || `Sorry, an error occurred: ${result.error || 'Unknown issue.'}`;
+                thinkingDiv.querySelector('.msg-bubble').innerHTML = markdownConverter.makeHtml(aiResponse);
+                qaChatLog.scrollTop = qaChatLog.scrollHeight;
+                chatHistory.push({text: aiResponse, sender: 'ai', isMarkdown: true});
+                saveChatHistory();
+            });
+            loadChatHistory();
+        })();
+
+        async function initializeBibliography() {
+            const searchInput = document.getElementById('bibliography-search');
+            const listContainer = document.getElementById('bibliography-list');
+            const langSelect = document.getElementById('lang-select');
+
+            const bibliographyData = [
+                {"id": 1, "title": "Google AI for Developers: Gemini API Documentation", "source": "Google Developers", "url": "https://ai.google.dev/docs"},
+                {"id": 2, "title": "Chart.js Official Documentation", "source": "Chart.js Team", "url": "https://www.chartjs.org/docs/latest/"},
+                {"id": 3, "title": "Plotly.js Open-Source Graphing Library", "source": "Plotly", "url": "https://plotly.com/javascript/"},
+                {
+                    "id": 4,
+                    "title": "A List Apart: Articles on Interaction Design",
+                    "source": "A List Apart Magazine",
+                    "url": "https://alistapart.com/topic/interaction-design/"
+                },
+                {
+                    "id": 5,
+                    "title": "The Role of Interactivity in Data Visualization",
+                    "source": "IEEE Transactions on Visualization",
+                    "url": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=2945"
+                },
+                {"id": 6, "title": "Tailwind CSS Documentation", "source": "Tailwind Labs", "url": "https://tailwindcss.com/docs"},
+                {"id": 7, "title": "Smashing Magazine: Web Design & Development", "source": "Smashing Media AG", "url": "https://www.smashingmagazine.com/"},
+                {"id": 8, "title": "Nielsen Norman Group: Evidence-Based User Experience Research", "source": "NN/g", "url": "https://www.nngroup.com/"}
+            ];
+
+            const renderBibliography = (filter = '') => {
+                listContainer.innerHTML = '';
+                const filterText = filter.toLowerCase().trim();
+                const lang = langSelect.value;
+                const sourceLabel = TextData.get(lang).bibliography_source_label || 'Source:';
+
+                const filteredData = bibliographyData.filter(item => {
+                    const keywords = filterText.split(',').map(k => k.trim()).filter(Boolean);
+                    if (keywords.length === 0) return true;
+                    return keywords.some(keyword =>
+                        item.title.toLowerCase().includes(keyword) ||
+                        item.source.toLowerCase().includes(keyword)
+                    );
+                });
+
+                if (filteredData.length === 0) {
+                    listContainer.innerHTML = `<p class="text-center text-text-light">No resources found for "${filter}"</p>`;
+                    return;
+                }
+
+                filteredData.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'source-item';
+                    itemDiv.innerHTML = `
+                        <p class="source-title">[${item.id}] ${item.title}</p>
+                        <p class="source-meta">
+                            <strong>${sourceLabel}</strong> ${item.source} |
+                            <a href="${item.url}" target="_blank" rel="noopener noreferrer">Link <i class="fa-solid fa-arrow-up-right-from-square fa-xs"></i></a>
+                        </p>
+                    `;
+                    listContainer.appendChild(itemDiv);
+                });
+            };
+
+            searchInput.addEventListener('input', (e) => renderBibliography(e.target.value));
+            langSelect.addEventListener('change', () => renderBibliography(searchInput.value));
+            renderBibliography();
+        }
+
+        (function CitationLinkManager() {
+            const searchInput = document.getElementById('bibliography-search');
+            const bibliographySection = document.getElementById('bibliography-section');
+            if (!searchInput || !bibliographySection) return;
+
+            document.querySelectorAll('ul.list-disc li').forEach(li => {
+                li.innerHTML = li.innerHTML.replace(/\[(\d+)\]/g, `<a href="#bibliography-section" class="citation-link">[$1]</a>`);
+            });
+
+            document.body.addEventListener('click', (event) => {
+                const link = event.target.closest('.citation-link');
+                if (!link) return;
+                event.preventDefault();
+                searchInput.value = link.textContent || '';
+                searchInput.dispatchEvent(new Event('input', {bubbles: true}));
+                bibliographySection.scrollIntoView({behavior: 'smooth'});
+            });
+        })();
+
+        UIManager.init();
+        TourManager.init();
+        BackgroundAnimation.init();
+        initializeBibliography();
+    });
+</script>
+</body>
+</html>
