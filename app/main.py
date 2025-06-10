@@ -6,8 +6,8 @@ from urllib.parse import quote
 
 import gradio as gr
 # FastAPI imports for proper file serving
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 
 from research_portal.app.utils.report_scanner import find_reports
 
@@ -440,25 +440,176 @@ def create_fastapi_app():
     # Create FastAPI app
     fastapi_app = FastAPI(title="Smart Reports Gallery")
 
-    # Mount static files for reports if directory exists
+    # Define our custom routes FIRST, before mounting Gradio
     if reports_base_dir_abs.is_dir():
-        print(f"📂 Mounting static files from: {reports_base_dir_abs}")
-        fastapi_app.mount(
-            "/reports",
-            StaticFiles(directory=str(reports_base_dir_abs)),
-            name="reports"
-        )
-        print("✅ Static file serving configured successfully")
+        print(f"📂 Setting up custom routes for: {reports_base_dir_abs}")
+
+        # Set up resource serving endpoints
+        @fastapi_app.get("/report-resource/{resource_path:path}")
+        async def serve_report_resource_root(resource_path: str):
+            """
+            Serve resources from the root of reports directory.
+            """
+            print(f"🔍 Resource request (root): /report-resource/{resource_path}")
+            try:
+                # Serving from root reports directory
+                full_resource_path = reports_base_dir_abs / resource_path
+                print(f"🔍 Looking for: {full_resource_path}")
+
+                # Security check: ensure path is within reports directory
+                if not str(full_resource_path.resolve()).startswith(str(reports_base_dir_abs.resolve())):
+                    print(f"❌ Security check failed for: {resource_path}")
+                    raise HTTPException(status_code=403, detail="Access denied")
+
+                if not full_resource_path.exists():
+                    print(f"❌ File not found: {full_resource_path}")
+                    raise HTTPException(status_code=404, detail="Resource not found")
+
+                print(f"✅ Serving: {full_resource_path}")
+
+                # Handle different file types
+                if resource_path.endswith('.linkres'):
+                    # Special handling for bibliography JSON files
+                    import json
+                    try:
+                        with open(full_resource_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                        return JSONResponse(content=data)
+                    except json.JSONDecodeError:
+                        raise HTTPException(status_code=500, detail="Invalid JSON file")
+                elif resource_path.endswith(('.wav', '.mp3', '.ogg')):
+                    # Audio files
+                    return FileResponse(
+                        full_resource_path,
+                        media_type='audio/wav' if resource_path.endswith('.wav') else 'audio/mpeg',
+                        headers={"Accept-Ranges": "bytes"}
+                    )
+                else:
+                    # Generic file serving
+                    return FileResponse(full_resource_path)
+
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"❌ Error serving resource {resource_path}: {e}")
+                raise HTTPException(status_code=500, detail="Internal server error")
+
+        # Custom route to handle HTML files and other report assets
+        @fastapi_app.get("/reports/{file_path:path}")
+        async def serve_processed_html(file_path: str, request: Request):
+            """
+            Serve HTML files and other report assets.
+            """
+            print(f"🔍 Report file request: /reports/{file_path}")
+            try:
+                full_path = reports_base_dir_abs / file_path
+                print(f"🔍 Looking for file: {full_path}")
+
+                # Security check
+                if not str(full_path.resolve()).startswith(str(reports_base_dir_abs.resolve())):
+                    print(f"❌ Security check failed for: {file_path}")
+                    return HTMLResponse(content="<h1>403 Forbidden</h1>", status_code=403,
+                                        headers={
+                                            "Cache-Control": "no-cache, no-store, must-revalidate",
+                                            "Pragma": "no-cache",
+                                            "Expires": "0"
+                                        })
+
+                if not full_path.exists():
+                    print(f"❌ File not found: {full_path}")
+                    return HTMLResponse(content="<h1>404 Not Found</h1>", status_code=404,
+                                        headers={
+                                            "Cache-Control": "no-cache, no-store, must-revalidate",
+                                            "Pragma": "no-cache",
+                                            "Expires": "0"
+                                        })
+
+                print(f"✅ Serving file: {full_path}")
+
+                # If it's an HTML file, serve it directly (no processing needed)
+                if file_path.lower().endswith('.html'):
+                    try:
+                        with open(full_path, 'r', encoding='utf-8') as f:
+                            html_content = f.read()
+                        return HTMLResponse(content=html_content,
+                                            headers={
+                                                "Cache-Control": "no-cache, no-store, must-revalidate",
+                                                "Pragma": "no-cache",
+                                                "Expires": "0"
+                                            })
+                    except Exception as e:
+                        print(f"❌ Error reading HTML file {file_path}: {e}")
+                        return HTMLResponse(content=f"<h1>Error reading file</h1><p>{str(e)}</p>", status_code=500)
+                else:
+                    # For non-HTML files, use regular file serving
+                    return FileResponse(full_path)
+
+            except Exception as e:
+                print(f"❌ Error serving file {file_path}: {e}")
+                return HTMLResponse(content="<h1>500 Internal Server Error</h1>", status_code=500)
+
+        print("✅ Custom routes configured successfully")
+
+        # Debug: Print all registered routes
+        print("🔍 Current FastAPI routes:")
+        for route in fastapi_app.routes:
+            if hasattr(route, 'path'):
+                methods = getattr(route, 'methods', 'N/A')
+                print(f"  {methods} {route.path}")
     else:
         print(f"⚠️  Reports directory not found: {reports_base_dir_abs}")
 
     # Create Gradio interface
+    print("🔧 Creating Gradio interface...")
     gradio_demo = create_gradio_interface()
 
-    # Mount Gradio app to FastAPI
+    # Mount Gradio app LAST - this is crucial for route precedence!
+    print("🔧 Mounting Gradio app...")
     fastapi_app = gr.mount_gradio_app(fastapi_app, gradio_demo, path="/")
 
+    # Debug: Print final routes after mounting Gradio
+    print("🔍 Final FastAPI routes after mounting Gradio:")
+    for route in fastapi_app.routes:
+        if hasattr(route, 'path'):
+            methods = getattr(route, 'methods', 'N/A')
+            print(f"  {methods} {route.path}")
+
     return fastapi_app
+
+
+def process_html_content(html_content, report_path):
+    """
+    Process HTML content to update resource URLs for proper serving.
+    """
+    import re
+
+    # Get the directory containing this report
+    report_dir = str(Path(report_path).parent) if Path(report_path).parent != Path('.') else ''
+
+    # Update audio file references
+    # Replace: Audio/stop_${index}.wav -> /report-resource/{report_dir}/Audio/stop_${index}.wav
+    audio_pattern = r'(this\.audioPlayer\.src\s*=\s*["`])Audio/'
+    if report_dir:
+        audio_replacement = rf'\1/report-resource/{report_dir}/Audio/'
+    else:
+        audio_replacement = r'\1/report-resource/Audio/'
+    html_content = re.sub(audio_pattern, audio_replacement, html_content)
+
+    # Update bibliography data file references
+    # Replace: 'Navigating_The_Nexus_Q2_2025.linkres' -> '/report-resource/{report_dir}/Navigating_The_Nexus_Q2_2025.linkres'
+    linkres_pattern = r"(['\"])([^'\"]*\.linkres)(['\"])"
+
+    def linkres_replacement(match):
+        quote = match.group(1)
+        filename = match.group(2)
+        if report_dir:
+            return f"{quote}/report-resource/{report_dir}/{filename}{quote}"
+        else:
+            return f"{quote}/report-resource/{filename}{quote}"
+
+    html_content = re.sub(linkres_pattern, linkres_replacement, html_content)
+
+    return html_content
 
 
 if __name__ == "__main__":
@@ -497,7 +648,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         app,
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=7860,
         log_level="info"
     )
